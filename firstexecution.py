@@ -1,37 +1,44 @@
-from googleapiclient.discovery import build
+import requests
+import json
+import sqlalchemy as db
+import pandas as pd
 
 api_key = 'AIzaSyA8B7HascL7gfk7MVITyfxOONb1IQzp5N8'
+channelId = input("Enter Channel ID: ")
+videoID = input("Enter Video ID: ")
 
-youtube = build('youtube', 'v3', developerKey=api_key)
+url = f'https://www.googleapis.com/youtube/v3/search?key={api_key}&channelID={channelId}&part=snippet,id&order=date'
 
-detailsrequest = youtube.channels().list(
-  part = 'contentDetails, statistics',
-  forUsername = 'sentdex'
-)
+url_json =requests.get(url).json()
+channelStats = url_json['items'][0]['snippet']
 
-playlistrequest = youtube.playlists().list(
-  part = 'contentDetails, snippet',
-  channelId = "UCfzlCWGWYyIQ0aLC5w48gBQ"
-)
+print('Video Title = ' + url_json['items'][0]['snippet']['title'])
+print('Date Uploaded = ' + url_json['items'][0]['snippet']['publishedAt'])
 
-oneplaylistrequest = youtube.playlistItems().list(
-  part = 'contentDetails',
-  playlistId = "PLQVvvaa0QuDcBby2qVDsDv41GghEQfr5E"
-)
 
-detailsresponse = detailsrequest.execute()
-playlistresponse = playlistrequest.execute()
-oneplaylistresponse = oneplaylistrequest.execute()
+urlForVideoStats = f'https://www.googleapis.com/youtube/v3/videos?id={videoID}&part=statistics&key={api_key}'
+url_jsonrForVideoStats = requests.get(urlForVideoStats).json()
 
-print(detailsresponse)
-print(playlistresponse)
-print(oneplaylistresponse)
+videoStats = url_jsonrForVideoStats['items'][0]['statistics']
 
-for item in playlistresponse['items']:
-  print(item)
-  print()
+print('countViews = ' + url_jsonrForVideoStats['items'][0]['statistics']['viewCount'])
+print('countLikes = ' + url_jsonrForVideoStats['items'][0]['statistics']['likeCount'])
+print('countDislikes = ' + url_jsonrForVideoStats['items'][0]['statistics']['dislikeCount'])
+print('countComments = ' + url_jsonrForVideoStats['items'][0]['statistics']['commentCount'])
 
-for item in oneplaylistresponse['items']:
-  videoId = item['contentDetails']['videoId']
-  print(videoId)
-  print()
+df = pd.DataFrame(channelStats, index=[0])
+print(df)
+
+engine = db.create_engine('sqlite:///df.db')
+df.to_sql('df', con=engine, if_exists='replace', index=False)
+queryResult = engine.execute("SELECT * FROM df;").fetchall()
+
+af = pd.DataFrame(videoStats, index=[0])
+print(af)
+
+engine = db.create_engine('sqlite:///af.db')
+df.to_sql('af', con=engine, if_exists='replace', index=False)
+query_output = engine.execute("SELECT * FROM af;").fetchall()
+
+print(pd.DataFrame(queryResult))
+print(pd.DataFrame(query_output))
